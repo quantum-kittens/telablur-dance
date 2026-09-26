@@ -726,51 +726,83 @@ async function runPipeline(){
   const image2_id = await uploadAsset(img2Blob, 'image2.jpg', 'image/jpeg');
   log(`[${secs()}s]   image2 asset: ${image2_id}`);
 
-  const frameBlobs = [];
-
+  // Frame slots created up front, in order, so the grid always displays
+  // 1..10 left to right regardless of which frame actually finishes first.
+  const frameBlobs = new Array(FRAME_COUNT).fill(null);
+  const frameSlots = [];
   for (let i = 1; i <= FRAME_COUNT; i++){
-    while (true){
-      try {
-        const strength = strengthForFrame(i);
-        log(`\n[${secs()}s] === frame ${i}/${FRAME_COUNT} (strength ${strength.toFixed(3)}) ===`);
+    const a = document.createElement('a');
+    a.style.visibility = 'hidden';
+    const img = document.createElement('img');
+    a.appendChild(img);
+    framesGrid.appendChild(a);
+    frameSlots.push(a);
+  }
+  function placeThumbnail(i, blob){
+    const thumbUrl = URL.createObjectURL(blob);
+    const a = frameSlots[i - 1];
+    a.href = thumbUrl; a.download = `output_${String(i).padStart(2, '0')}.jpg`;
+    a.querySelector('img').src = thumbUrl;
+    a.style.visibility = 'visible';
+  }
 
-        log(`[${secs()}s]   uploading mask (${(maskBlobs[i - 1].size / 1024).toFixed(0)} KB)…`);
-        const mask_id = await uploadAsset(maskBlobs[i - 1], `mask${i}.jpg`, 'image/jpeg');
+  let completed = 0;
+  function setDone(){ completed++; setProgress(completed, FRAME_COUNT); }
 
-        log(`[${secs()}s]   submitting job…`);
-        const job_id = await submitJob('telablur-v1',
-          { strength, direction: DIRECTION },
-          { image1: image1_id, image2: image2_id, mask: mask_id });
-        log(`[${secs()}s]   job ${job_id}, polling…`);
+  async function processFrame(i){
+    const strength = strengthForFrame(i);
+    log(`[${secs()}s] frame ${i}: strength ${strength.toFixed(3)}, uploading mask (${(maskBlobs[i - 1].size / 1024).toFixed(0)} KB)…`);
+    const mask_id = await uploadAsset(maskBlobs[i - 1], `mask${i}.jpg`, 'image/jpeg');
 
-        await pollJob(job_id, { timeout: 300000 });
+    log(`[${secs()}s] frame ${i}: submitting job…`);
+    const job_id = await submitJob('telablur-v1',
+      { strength, direction: DIRECTION },
+      { image1: image1_id, image2: image2_id, mask: mask_id });
+    log(`[${secs()}s] frame ${i}: job ${job_id}, polling…`);
 
-        log(`[${secs()}s]   fetching result…`);
-        const resultBody = await getResult(job_id);
-        const outFile = resultBody.outputs[0];
+    await pollJob(job_id, { timeout: 300000 });
 
-        const dl = await fetch(proxied(outFile.url));
-        const blob = await dl.blob();
-        frameBlobs.push(blob);
+    log(`[${secs()}s] frame ${i}: fetching result…`);
+    const resultBody = await getResult(job_id);
+    const outFile = resultBody.outputs[0];
+    const dl = await fetch(proxied(outFile.url));
+    const blob = await dl.blob();
 
-        const thumbUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = thumbUrl; a.download = `output_${String(i).padStart(2, '0')}.jpg`;
-        const img = document.createElement('img');
-        img.src = thumbUrl;
-        a.appendChild(img);
-        framesGrid.appendChild(a);
+    frameBlobs[i - 1] = blob;
+    placeThumbnail(i, blob);
+    setDone();
+    log(`[${secs()}s] frame ${i}: done`);
+  }
 
-        log(`[${secs()}s]   frame ${i} done`);
-        break;   // this frame succeeded, move on to the next one
-      } catch (err){
-        log(`[${secs()}s]   frame ${i} failed: ${err.message}`, true);
-        const tryAgain = confirm(`Frame ${i} failed:\n${err.message}\n\nRetry just this frame? (Cancel stops here, frames already made stay above.)`);
-        if (!tryAgain) throw err;
-        log(`[${secs()}s]   retrying frame ${i}…`);
+  // Moth confirmed all 10 can run in parallel.
+  const CONCURRENCY = 10;
+  async function runBatch(indices){
+    const queue = [...indices];
+    const failedIndices = [];
+    async function worker(){
+      while (queue.length){
+        const i = queue.shift();
+        try {
+          await processFrame(i);
+        } catch (err){
+          log(`[${secs()}s] frame ${i}: failed, ${err.message}`, true);
+          failedIndices.push(i);
+        }
       }
     }
-    setProgress(i, FRAME_COUNT);
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, indices.length) }, worker));
+    return failedIndices;
+  }
+
+  let failed = await runBatch(Array.from({ length: FRAME_COUNT }, (_, k) => k + 1));
+  while (failed.length && confirm(
+    `${failed.length} frame${failed.length === 1 ? '' : 's'} failed: ${failed.join(', ')}.\n\nRetry ${failed.length === 1 ? 'it' : 'them'}? (Cancel stops here, frames already made stay above.)`
+  )){
+    log(`\n[${secs()}s] retrying frame${failed.length === 1 ? '' : 's'} ${failed.join(', ')}…`);
+    failed = await runBatch(failed);
+  }
+  if (failed.length){
+    throw new Error(`frame${failed.length === 1 ? '' : 's'} ${failed.join(', ')} never completed`);
   }
 
   log(`\n[${secs()}s] assembling gif…`);
