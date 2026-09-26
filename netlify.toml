@@ -1,0 +1,10 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # getUserMedia (camera) requires a secure context; Netlify serves HTTPS
+    # by default, this just makes sure nothing downstream strips it.
+    Permissions-Policy = "camera=(self)"

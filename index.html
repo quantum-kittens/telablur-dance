@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telablur dance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#1a1f1c; --panel:#18351b; --panel2:#1a1f1c; --border:#557448;
+    --text:#bafdc2; --text-dim:#9cbf8d;
+    --green:#bafdc2; --green-dim:#557448; --green-glow:rgba(186,253,194,0.3);
+    --terra:#e0a05c; --err:#ff6b52;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { background:var(--bg); color:var(--text); min-height:100%;
+    font-family:'Inter', system-ui, sans-serif; }
+  body { padding:28px 20px 60px; }
+  h1 { font-family:'Inter', system-ui, sans-serif; font-weight:300;
+    font-size:clamp(26px,4vw,36px); letter-spacing:0.01em; }
+  h1 span { color:var(--green); text-shadow:0 2px 20px var(--green-glow); }
+  .sub { color:var(--text-dim); font-size:14px; margin-top:4px; }
+  .wrap { max-width:820px; margin:0 auto; }
+
+  .steps { display:flex; gap:8px; margin:22px 0 26px; }
+  .step { flex:1; padding:8px 4px; text-align:center; font-size:12px;
+    border-bottom:2px solid var(--border); color:var(--text-dim); }
+  .step.on { color:var(--green); border-color:var(--green); }
+  .step.done { color:var(--text); border-color:var(--green-dim); }
+
+  .phase { display:none; }
+  .phase.active { display:block; animation:fadeIn 0.25s ease-out; }
+  @keyframes fadeIn { from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
+  .card { background:rgba(26,31,28,0.88); backdrop-filter:blur(8px); border:2px solid var(--border);
+    border-radius:16px; padding:20px; margin-bottom:16px; box-shadow:0 8px 32px rgba(0,0,0,0.4); }
+  .card h2 { font-family:'Inter', system-ui, sans-serif; font-weight:400;
+    font-size:19px; margin-bottom:12px; color:var(--text-dim); }
+  label.field { display:block; margin-bottom:16px; }
+  label.field .lbl { display:block; font-size:13px; color:var(--text-dim); margin-bottom:6px; }
+
+  input[type="file"], input[type="password"], input[type="text"], input[type="number"] {
+    width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:9px 11px; font-size:14px; font-family:inherit;
+  }
+  .thumb { margin-top:8px; max-width:160px; max-height:100px; border-radius:6px;
+    border:1px solid var(--border); display:none; }
+
+  .modes { display:flex; gap:8px; margin-bottom:18px; }
+  .modes button { flex:1; padding:13px; border-radius:10px; border:2px solid var(--border);
+    background:var(--panel2); color:var(--text-dim); font:14px 'Inter',system-ui,sans-serif; font-weight:500; cursor:pointer; }
+  .modes button.on { border-color:var(--green); color:var(--green); box-shadow:0 0 16px var(--green-glow); }
+
+  .toggle { display:flex; gap:8px; }
+  .toggle button { flex:1; padding:10px; border-radius:8px; border:1px solid var(--border);
+    background:var(--panel2); color:var(--text-dim); font:13px 'Inter',system-ui,sans-serif; cursor:pointer; }
+  .toggle button.on { border-color:var(--green); color:var(--green); box-shadow:0 0 0 1px var(--green) inset; }
+
+  button.big, a.big {
+    font:14px 'Inter',system-ui,sans-serif; font-weight:600; letter-spacing:0.01em;
+    background:var(--green); color:#0f1a11; border:none; border-radius:10px;
+    padding:13px 20px; cursor:pointer; box-shadow:0 4px 20px var(--green-glow);
+  }
+  button.big:hover:not(:disabled), a.big:hover { transform:scale(1.02); }
+  button.big:disabled { opacity:0.35; box-shadow:none; cursor:default; transform:none; }
+  button.ghost, a.ghost {
+    font:13px 'Inter',system-ui,sans-serif; background:transparent; color:var(--text-dim);
+    border:1px solid var(--border); border-radius:8px; padding:10px 16px; cursor:pointer;
+  }
+  button.ghost:hover:not(:disabled), a.ghost:hover { border-color:var(--green); color:var(--green); }
+  button.ghost:disabled { opacity:0.35; cursor:default; }
+
+  .stage { position:relative; display:flex; justify-content:center; align-items:center;
+    background:#000; border-radius:12px; overflow:hidden; margin-bottom:14px; }
+  canvas#out { background:#fff; max-width:100%; display:block; }
+  video { display:none; }
+  #countdown {
+    position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    font-size:20vw; font-weight:700; color:#fff; background:rgba(0,0,0,0.35);
+  }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+  #log { background:#0f1410; border:1px solid var(--border); border-radius:10px;
+    padding:12px 14px; font:12px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+    color:var(--text); height:220px; overflow-y:auto; white-space:pre-wrap; }
+  .progress-track { height:8px; background:var(--panel2); border-radius:5px; overflow:hidden; margin:12px 0; }
+  .progress-fill { height:100%; width:0%; background:var(--green); box-shadow:0 0 10px var(--green-glow);
+    transition:width 0.3s ease; }
+
+  .frames { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  .frames a { display:block; }
+  .frames img { width:88px; height:auto; border-radius:6px; border:1px solid var(--border); }
+
+  #gifPreview { max-width:100%; border-radius:12px; border:1px solid var(--border); display:block; margin-bottom:14px; }
+
+  .note { color:var(--text-dim); font-size:12.5px; line-height:1.6; margin-top:10px; }
+  .warn { color:var(--terra); }
+  .errbox { color:var(--err); font-size:13px; margin-top:10px; white-space:pre-wrap; }
+
+  .count-box { display:flex; gap:10px; align-items:center; margin-top:14px; }
+  .count-box input { max-width:100px; }
+  #countResult { margin-top:10px; font-size:14px; color:var(--green); display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Telablur <span>dance</span></h1>
+  <div class="sub">Move. Blend. See what shows up.</div>
+
+  <div class="steps">
+    <div class="step" data-step="setup">1 &middot; setup</div>
+    <div class="step" data-step="capture">2 &middot; capture</div>
+    <div class="step" data-step="generate">3 &middot; generate</div>
+    <div class="step" data-step="done">4 &middot; done</div>
+  </div>
+
+  <!-- ══════════════ PHASE 1: SETUP ══════════════ -->
+  <section class="phase" id="phase-setup">
+    <div class="card">
+      <h2>Pick a mode</h2>
+      <div class="modes">
+        <button id="modeGameBtn" class="on">find the cats</button>
+        <button id="modeCustomBtn">make your own</button>
+      </div>
+      <div class="note" id="modeExplainer">
+        Your silhouette becomes a window into a hidden picture. Move around during the five second capture, the more ground you cover, the more comes through. Ten quick reveals get stitched into a gif. See how many cats you can find.
+      </div>
+    </div>
+
+    <div class="card" id="image1Card">
+      <h2>Your image</h2>
+      <label class="field">
+        <span class="lbl">Image 1</span>
+        <input type="file" id="image1Input" accept="image/png,image/jpeg">
+        <img class="thumb" id="image1Thumb">
+      </label>
+      <label class="field" style="margin-bottom:0;">
+        <span class="lbl">Image 2</span>
+        <input type="file" id="image2Input" accept="image/png,image/jpeg">
+        <img class="thumb" id="image2Thumb">
+      </label>
+    </div>
+
+    <div class="card" id="image2OnlyCard" style="display:none;">
+      <h2>Your image</h2>
+      <label class="field" style="margin-bottom:0;">
+        <span class="lbl">This gets blended with the hidden picture</span>
+        <input type="file" id="image2InputGame" accept="image/png,image/jpeg">
+        <img class="thumb" id="image2GameThumb">
+      </label>
+    </div>
+
+    <div class="card">
+      <h2>No image handy?</h2>
+      <div class="note">
+        Need something to blend or don't have a second image ready? Grab one from the <a href="https://bit.ly/telablurdancelibrary" target="_blank" rel="noopener" style="color:var(--green);">image library</a>, 1280&times;720 pieces from Van Gogh's paintings, ready to use.
+      </div>
+      <div class="note" style="margin-top:8px;">
+        Happy with your gif? <a href="https://bit.ly/telablurdance" target="_blank" rel="noopener" style="color:var(--green);">Submit it here</a>, we're collecting them.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Orientation</h2>
+      <div class="toggle">
+        <button id="orientLandscape" class="on">landscape &middot; 16:9</button>
+        <button id="orientPortrait">portrait &middot; 9:16</button>
+      </div>
+      <div class="note">Sets the size for the silhouette capture, your image, and the final gif, 1280&times;720 or 720&times;1280.</div>
+    </div>
+
+    <div class="card">
+      <h2>Moth Quantum API key</h2>
+      <label class="field" style="margin-bottom:0;">
+        <span class="lbl">moth_&hellip;</span>
+        <input type="password" id="apiKeyInput" placeholder="moth_your_key_here" autocomplete="off">
+      </label>
+      <div class="note warn">Stays in this tab only. Never saved, never sent anywhere except Moth.</div>
+    </div>
+
+    <button class="big" id="toSetupNextBtn" disabled>continue to capture &rarr;</button>
+  </section>
+
+  <!-- ══════════════ PHASE 2: CAPTURE ══════════════ -->
+  <section class="phase" id="phase-capture">
+    <div class="card">
+      <h2>Silhouette capture</h2>
+      <div class="stage">
+        <canvas id="out" width="1280" height="720"></canvas>
+        <div id="countdown"></div>
+      </div>
+      <div class="row">
+        <button class="ghost" id="camBtn">start camera</button>
+        <button class="big" id="recordBtn" disabled>record &middot; 3s countdown, then 5s capture</button>
+        <button class="ghost" data-reset>start over</button>
+      </div>
+      <div id="captureStatus" class="note">loading model&hellip;</div>
+    </div>
+  </section>
+
+  <!-- ══════════════ PHASE 3: GENERATE ══════════════ -->
+  <section class="phase" id="phase-generate">
+    <div class="card">
+      <h2>Generating your ten frames</h2>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div id="log"></div>
+      <div class="frames" id="framesGrid"></div>
+      <div class="row" style="margin-top:14px;">
+        <button class="ghost" data-reset>start over</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ PHASE 4: DONE ══════════════ -->
+  <section class="phase" id="phase-done">
+    <div class="card">
+      <h2>Your piece</h2>
+      <img id="gifPreview" alt="Telablur stop-motion result">
+      <div class="row">
+        <a class="big" id="downloadGifBtn" download="telablur_stopmotion.gif" style="text-decoration:none; display:inline-block;">download gif</a>
+        <a class="ghost" href="https://bit.ly/telablurdance" target="_blank" rel="noopener" style="text-decoration:none; display:inline-block;">submit your gif</a>
+        <button class="ghost" data-reset>start over</button>
+      </div>
+    </div>
+
+    <div class="card" id="countCard" style="display:none;">
+      <h2>How many cats did you find?</h2>
+      <div class="note">Submit your gif and tell us your count: <a href="https://bit.ly/telablurdance" target="_blank" rel="noopener" style="color:var(--green);">submit here</a>.</div>
+
+      <div class="row" id="revealChoiceRow" style="margin-top:14px;">
+        <button class="ghost" id="revealAnswerBtn">reveal answer</button>
+        <button class="ghost" data-reset>try again</button>
+      </div>
+
+      <div id="revealConfirm" style="display:none; margin-top:14px;">
+        <div class="note">You sure you wanna find out instead of try again?</div>
+        <div class="row" style="margin-top:10px;">
+          <button class="ghost" id="revealYesBtn">yes, show me</button>
+          <button class="ghost" data-reset>no, try again</button>
+        </div>
+      </div>
+
+      <div id="revealResult" style="display:none; margin-top:14px; font-size:16px; color:var(--green); font-weight:600;"></div>
+    </div>
+  </section>
+</div>
+
+<video id="cam" playsinline muted></video>
+
+<script src="gif.js"></script>
+<script type="module">
+import { FilesetResolver, PoseLandmarker }
+  from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs";
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFIG — the params/slot names below (image1, image2, mask, strength,
+// direction) are exactly what worked against the real Moth Quantum API,
+// confirmed by its own validation errors during testing. Don't rename them.
+// ═══════════════════════════════════════════════════════════════════════════
+const BASE_URL = "https://api.mothquantum.com/api/v1";
+// Moth's API sends no Access-Control-Allow-Origin header, confirmed by
+// testing, so a browser page cannot call it directly (CORS blocks it,
+// unconditionally, no code on this page can work around that). Locally
+// this page needs proxy_server.py running; on Netlify, netlify/functions/
+// proxy.mjs does the same job automatically, no setup needed.
+const PROXY_PREFIX = "/proxy?url=";
+function proxied(url){ return PROXY_PREFIX + encodeURIComponent(url); }
+
+const FRAME_COUNT = 10;
+const CAPTURE_INTERVAL_MS = 500;
+const COUNTDOWN_SECONDS = 3;
+const DIRECTION = "vertical";           // confirmed enum: full | vertical | horizontal
+const STRENGTH_MIN = 0.25, STRENGTH_MAX = 0.5;
+const strengthForFrame = i => STRENGTH_MIN + (STRENGTH_MAX - STRENGTH_MIN) * (i - 1) / (FRAME_COUNT - 1);
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE + PHASE SWITCHING
+// ═══════════════════════════════════════════════════════════════════════════
+let orientation = 'landscape';
+let mode = 'game';   // 'game' (hidden-picture mode) | 'custom' (bring both images)
+let image1File = null, image2File = null;
+let apiKey = '';
+let maskBlobs = [];   // 10 JPEG blobs from capture, in memory only
+
+// Baked-in image1 for game mode, one per orientation, same folder as this page.
+const GAME_IMAGE = { landscape: 'cats-landscape.jpg', portrait: 'cats-portrait.jpg' };
+
+function dims(){ return orientation === 'portrait' ? { w: 720, h: 1280 } : { w: 1280, h: 720 }; }
+
+const stepsEls = Object.fromEntries(
+  [...document.querySelectorAll('.step')].map(el => [el.dataset.step, el])
+);
+function goToPhase(name){
+  document.querySelectorAll('.phase').forEach(el => el.classList.remove('active'));
+  document.getElementById('phase-' + name).classList.add('active');
+  const order = ['setup', 'capture', 'generate', 'done'];
+  const idx = order.indexOf(name);
+  order.forEach((n, i) => {
+    stepsEls[n].classList.toggle('on', i === idx);
+    stepsEls[n].classList.toggle('done', i < idx);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 1 — SETUP
+// ═══════════════════════════════════════════════════════════════════════════
+const image1Input = document.getElementById('image1Input');
+const image2Input = document.getElementById('image2Input');
+const image1Thumb = document.getElementById('image1Thumb');
+const image2Thumb = document.getElementById('image2Thumb');
+const image2InputGame = document.getElementById('image2InputGame');
+const image2GameThumb = document.getElementById('image2GameThumb');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const toNextBtn = document.getElementById('toSetupNextBtn');
+const orientLandscapeBtn = document.getElementById('orientLandscape');
+const orientPortraitBtn = document.getElementById('orientPortrait');
+const modeGameBtn = document.getElementById('modeGameBtn');
+const modeCustomBtn = document.getElementById('modeCustomBtn');
+const modeExplainer = document.getElementById('modeExplainer');
+const image1Card = document.getElementById('image1Card');
+const image2OnlyCard = document.getElementById('image2OnlyCard');
+
+const GAME_EXPLAINER = "Your silhouette becomes a window into a hidden picture. Move around during the five second capture, the more ground you cover, the more comes through. Ten quick reveals get stitched into a gif. See how many cats you can find.";
+const CUSTOM_EXPLAINER = "Upload two images to blend. Everywhere except your body blends together, you carve a shape out of the mix as you move. Ten quick reveals get stitched into a gif at the end.";
+
+function setMode(next){
+  mode = next;
+  modeGameBtn.classList.toggle('on', mode === 'game');
+  modeCustomBtn.classList.toggle('on', mode === 'custom');
+  modeExplainer.textContent = mode === 'game' ? GAME_EXPLAINER : CUSTOM_EXPLAINER;
+  image1Card.style.display = mode === 'custom' ? 'block' : 'none';
+  image2OnlyCard.style.display = mode === 'game' ? 'block' : 'none';
+  checkSetupReady();
+}
+modeGameBtn.addEventListener('click', () => setMode('game'));
+modeCustomBtn.addEventListener('click', () => setMode('custom'));
+
+function checkSetupReady(){
+  const key = apiKeyInput.value.trim();
+  toNextBtn.disabled = mode === 'game'
+    ? !(image2File && key)
+    : !(image1File && image2File && key);
+}
+image1Input.addEventListener('change', () => {
+  image1File = image1Input.files[0] || null;
+  if (image1File){ image1Thumb.src = URL.createObjectURL(image1File); image1Thumb.style.display = 'block'; }
+  checkSetupReady();
+});
+image2Input.addEventListener('change', () => {
+  image2File = image2Input.files[0] || null;
+  if (image2File){ image2Thumb.src = URL.createObjectURL(image2File); image2Thumb.style.display = 'block'; }
+  checkSetupReady();
+});
+image2InputGame.addEventListener('change', () => {
+  image2File = image2InputGame.files[0] || null;
+  if (image2File){ image2GameThumb.src = URL.createObjectURL(image2File); image2GameThumb.style.display = 'block'; }
+  checkSetupReady();
+});
+apiKeyInput.addEventListener('input', checkSetupReady);
+
+orientLandscapeBtn.addEventListener('click', () => {
+  orientation = 'landscape';
+  orientLandscapeBtn.classList.add('on'); orientPortraitBtn.classList.remove('on');
+  syncCanvasSize();
+});
+orientPortraitBtn.addEventListener('click', () => {
+  orientation = 'portrait';
+  orientPortraitBtn.classList.add('on'); orientLandscapeBtn.classList.remove('on');
+  syncCanvasSize();
+});
+
+toNextBtn.addEventListener('click', () => {
+  apiKey = apiKeyInput.value.trim();
+  captureStatusEl.textContent = cameraOn ? 'camera on — record when ready.' : 'model ready — click "start camera".';
+  goToPhase('capture');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 2 — CAPTURE (same segmentation approach as Entango's Full Body mode:
+// one mask per detected person, unioned by per-pixel max; inverted so the
+// person comes out black on a white background, ready to use as a mask)
+// ═══════════════════════════════════════════════════════════════════════════
+const video = document.getElementById('cam');
+const out = document.getElementById('out');
+const octx = out.getContext('2d');
+const captureStatusEl = document.getElementById('captureStatus');
+const countdownEl = document.getElementById('countdown');
+const camBtn = document.getElementById('camBtn');
+const recordBtn = document.getElementById('recordBtn');
+
+function syncCanvasSize(){
+  const { w, h } = dims();
+  out.width = w; out.height = h;
+}
+syncCanvasSize();
+
+const MAX_PEOPLE = 2;
+const MASK_MISS_GRACE = 12;
+const MASK_SMOOTH_K = 0.55;
+
+let poseLandmarker = null, modelReady = false, cameraOn = false;
+let lastVideoTime = -1, haveMask = false, maskMissStreak = 0;
+
+const maskCanvas = document.createElement('canvas');
+const maskCtx = maskCanvas.getContext('2d');
+let maskImage = null;
+const maskSmoothCanvas = document.createElement('canvas');
+const maskSmoothCtx = maskSmoothCanvas.getContext('2d');
+let maskSmoothInit = false;
+
+function processMask(res){
+  const masks = res.segmentationMasks;
+  if (!masks || !masks.length){
+    maskMissStreak++;
+    if (maskMissStreak > MASK_MISS_GRACE) haveMask = false;
+    return;
+  }
+  const mw = masks[0].width, mh = masks[0].height, n = mw * mh;
+  let combined = null;
+  for (const m of masks){
+    const arr = m.getAsFloat32Array();
+    if (arr.length === n){
+      if (!combined) combined = arr.slice();
+      else for (let i = 0; i < n; i++) if (arr[i] > combined[i]) combined[i] = arr[i];
+    }
+    m.close();
+  }
+  if (!combined){
+    maskMissStreak++;
+    if (maskMissStreak > MASK_MISS_GRACE) haveMask = false;
+    return;
+  }
+  maskMissStreak = 0;
+
+  if (maskCanvas.width !== mw || maskCanvas.height !== mh){
+    maskCanvas.width = mw; maskCanvas.height = mh;
+    maskImage = maskCtx.createImageData(mw, mh);
+  }
+  const px = maskImage.data;
+  for (let i = 0; i < n; i++){
+    const v = (1 - combined[i]) * 255;   // inverted: person -> black, background -> white
+    const j = i * 4;
+    px[j] = px[j+1] = px[j+2] = v; px[j+3] = 255;
+  }
+  maskCtx.putImageData(maskImage, 0, 0);
+  haveMask = true;
+
+  if (maskSmoothCanvas.width !== mw || maskSmoothCanvas.height !== mh){
+    maskSmoothCanvas.width = mw; maskSmoothCanvas.height = mh;
+    maskSmoothInit = false;
+  }
+  if (!maskSmoothInit){ maskSmoothCtx.drawImage(maskCanvas, 0, 0); maskSmoothInit = true; }
+  else {
+    maskSmoothCtx.globalAlpha = MASK_SMOOTH_K;
+    maskSmoothCtx.drawImage(maskCanvas, 0, 0);
+    maskSmoothCtx.globalAlpha = 1;
+  }
+}
+
+function drawCover(ctx, img, iw, ih, dw, dh){
+  const scale = Math.max(dw / iw, dh / ih);
+  const sw = dw / scale, sh = dh / scale;
+  const sx = (iw - sw) / 2, sy = (ih - sh) / 2;
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+}
+
+function renderFrame(){
+  octx.fillStyle = '#fff';
+  octx.fillRect(0, 0, out.width, out.height);
+  if (haveMask && cameraOn && maskSmoothCanvas.width > 0){
+    octx.save();
+    octx.translate(out.width, 0); octx.scale(-1, 1);
+    drawCover(octx, maskSmoothCanvas, maskSmoothCanvas.width, maskSmoothCanvas.height, out.width, out.height);
+    octx.restore();
+  }
+}
+
+async function initModel(){
+  try {
+    captureStatusEl.textContent = 'loading model…';
+    const vision = await FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm');
+    poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+        delegate: 'GPU'
+      },
+      runningMode: 'VIDEO', numPoses: MAX_PEOPLE, outputSegmentationMasks: true
+    });
+    modelReady = true;
+    captureStatusEl.textContent = 'model ready — click "start camera".';
+  } catch (err){
+    captureStatusEl.textContent = 'model failed to load: ' + err;
+  }
+}
+
+async function startCamera(){
+  if (!modelReady){ captureStatusEl.textContent = 'model still loading…'; return; }
+  try {
+    captureStatusEl.textContent = 'requesting camera…';
+    const { w, h } = dims();
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: w }, height: { ideal: h }, facingMode: 'user' }, audio: false
+    });
+    video.srcObject = stream;
+    await video.play();
+    cameraOn = true;
+    recordBtn.disabled = false;
+    captureStatusEl.textContent = 'camera on — record when ready.';
+  } catch (err){
+    captureStatusEl.textContent = 'camera blocked: ' + err;
+  }
+}
+camBtn.addEventListener('click', startCamera);
+
+function loop(){
+  requestAnimationFrame(loop);
+  if (cameraOn && video.readyState >= 2 && video.currentTime !== lastVideoTime){
+    lastVideoTime = video.currentTime;
+    try {
+      const res = poseLandmarker.detectForVideo(video, performance.now());
+      processMask(res);
+    } catch (_) {}
+  }
+  renderFrame();
+}
+
+async function record(){
+  recordBtn.disabled = true; camBtn.disabled = true;
+  maskBlobs = [];
+
+  for (let n = COUNTDOWN_SECONDS; n >= 1; n--){
+    countdownEl.textContent = String(n);
+    countdownEl.style.display = 'flex';
+    captureStatusEl.textContent = `get into position… starting in ${n}`;
+    await sleep(1000);
+  }
+  countdownEl.style.display = 'none';
+
+  for (let i = 1; i <= FRAME_COUNT; i++){
+    await sleep(CAPTURE_INTERVAL_MS);
+    captureStatusEl.textContent = `capturing frame ${i} of ${FRAME_COUNT}`;
+    const blob = await new Promise(resolve => out.toBlob(resolve, 'image/jpeg', 0.92));
+    maskBlobs.push(blob);
+  }
+
+  captureStatusEl.textContent = `captured ${FRAME_COUNT} frames — generating your piece…`;
+  recordBtn.disabled = false; camBtn.disabled = false;   // camera's still running, ready to go again on return
+  goToPhase('generate');
+  runPipeline().catch(err => log('FAILED: ' + err.message, true));
+}
+recordBtn.addEventListener('click', record);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MOTH QUANTUM API — same call shapes as the working Python harness:
+// register/PUT/complete for assets, submit -> poll -> result for jobs, with
+// 429/502/503 retried using the server's own Retry-After when it sends one.
+// ═══════════════════════════════════════════════════════════════════════════
+function authHeaders(){ return { 'Authorization': `Bearer ${apiKey}` }; }
+
+async function mothFetch(method, url, opts = {}){
+  const maxAttempts = 6;
+  let resp;
+  for (let attempt = 0; attempt < maxAttempts; attempt++){
+    try {
+      resp = await fetch(proxied(url), { method, ...opts });
+    } catch (networkErr){
+      throw new Error(
+        `Network error reaching the proxy for ${url}: ${networkErr.message}. ` +
+        `Locally, make sure proxy_server.py is running and you opened this page over ` +
+        `http://localhost, not by double-clicking the file. On Netlify, check that the ` +
+        `proxy function deployed correctly.`
+      );
+    }
+    if ([429, 502, 503].includes(resp.status) && attempt < maxAttempts - 1){
+      const retryAfter = parseFloat(resp.headers.get('Retry-After')) || Math.min(2 ** attempt, 30);
+      log(`  ${resp.status} from Moth, retrying in ${retryAfter}s (attempt ${attempt + 1}/${maxAttempts})…`);
+      await sleep(retryAfter * 1000);
+      continue;
+    }
+    return resp;
+  }
+  return resp;
+}
+
+async function raiseForProblem(resp){
+  if (resp.ok) return;
+  let problem = null;
+  try { problem = await resp.json(); } catch (_) {}
+  if (problem){
+    throw new Error(`${problem.title || resp.status}: ${problem.detail || ''} ${JSON.stringify(problem.errors || '')}`);
+  }
+  throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+}
+
+async function uploadAsset(blob, filename, contentType){
+  const resp = await mothFetch('POST', `${BASE_URL}/assets`, {
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename, content_type: contentType, size_bytes: blob.size })
+  });
+  await raiseForProblem(resp);
+  const body = await resp.json();
+  const assetId = body.asset_id;
+  const uploadInfo = body.upload;
+
+  const putHeaders = { 'Content-Type': contentType, ...(uploadInfo.headers || {}) };
+  const putResp = await fetch(proxied(uploadInfo.url), { method: 'PUT', headers: putHeaders, body: blob });
+  if (!putResp.ok){
+    const errText = await putResp.text().catch(() => '');
+    throw new Error(`upload PUT failed: ${putResp.status} ${errText.slice(0, 400)}`);
+  }
+
+  // The completion check has 422'd with "not a valid asset" on a perfectly
+  // normal, freshly-uploaded file in testing, then succeeded on the exact
+  // same bytes moments later, looks like a transient check on Moth's side
+  // rather than a real content problem. A bounded retry with escalating
+  // delay covers it without masking a genuine rejection (it still fails
+  // after these attempts).
+  let completeResp;
+  const RETRY_DELAYS_MS = [2000, 3000, 5000, 8000];
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++){
+    completeResp = await mothFetch('POST', `${BASE_URL}/assets/${assetId}/complete`, { headers: authHeaders() });
+    if (completeResp.ok) break;
+    const problem = await completeResp.clone().json().catch(() => null);
+    const looksTransient = problem && /not a valid asset/i.test(problem.detail || '');
+    if (!looksTransient || attempt === RETRY_DELAYS_MS.length) break;
+    log(`  asset not ready yet, retrying (attempt ${attempt + 2}/${RETRY_DELAYS_MS.length + 1})…`);
+    await sleep(RETRY_DELAYS_MS[attempt]);
+  }
+  await raiseForProblem(completeResp);
+  return assetId;
+}
+
+async function submitJob(engineId, params, inputFiles){
+  const resp = await mothFetch('POST', `${BASE_URL}/engines/${engineId}/process`, {
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ params, input_files: inputFiles })
+  });
+  await raiseForProblem(resp);
+  const body = await resp.json();
+  return body.job_id;
+}
+
+async function pollJob(jobId, { interval = 3000, timeout = 300000 } = {}){
+  const start = performance.now();
+  while (true){
+    const resp = await mothFetch('GET', `${BASE_URL}/jobs/${jobId}/status`, { headers: authHeaders() });
+    await raiseForProblem(resp);
+    const body = await resp.json();
+    if (body.status === 'completed') return body;
+    if (['failed', 'cancelled'].includes(body.status)){
+      throw new Error(`job ${jobId} ended with status ${body.status}: ${JSON.stringify(body.error)}`);
+    }
+    if (performance.now() - start > timeout) throw new Error(`job ${jobId} timed out after ${timeout / 1000}s`);
+    await sleep(interval);
+  }
+}
+
+async function getResult(jobId){
+  const resp = await mothFetch('GET', `${BASE_URL}/jobs/${jobId}/result`, { headers: authHeaders() });
+  if (resp.status === 409) throw new Error(`job ${jobId} not finished yet, or failed`);
+  if (resp.status === 410) throw new Error(`job ${jobId} result no longer retrievable`);
+  await raiseForProblem(resp);
+  return resp.json();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// IMAGE PREP — cover-crop each source image to exactly the capture canvas's
+// size, so it lines up pixel-for-pixel with the masks.
+// ═══════════════════════════════════════════════════════════════════════════
+async function resizeFileToBlob(file, tw, th){
+  const bitmap = await createImageBitmap(file);
+  const sw = bitmap.width, sh = bitmap.height;
+  const scale = Math.max(tw / sw, th / sh);
+  const rw = Math.round(sw * scale), rh = Math.round(sh * scale);
+  const left = Math.round((rw - tw) / 2), top = Math.round((rh - th) / 2);
+  const off = document.createElement('canvas');
+  off.width = tw; off.height = th;
+  off.getContext('2d').drawImage(bitmap, -left, -top, rw, rh);
+  return new Promise(resolve => off.toBlob(resolve, 'image/jpeg', 0.92));
+}
+
+// In game mode, image1 is baked into the site (same folder as this page),
+// not uploaded by the player.
+async function getImage1Source(){
+  if (mode === 'custom') return image1File;
+  const filename = GAME_IMAGE[orientation];
+  const resp = await fetch(filename);
+  if (!resp.ok) throw new Error(`couldn't load ${filename}, make sure it's in the same folder as this page`);
+  return await resp.blob();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 3 — GENERATE
+// ═══════════════════════════════════════════════════════════════════════════
+const logEl = document.getElementById('log');
+const progressFill = document.getElementById('progressFill');
+const framesGrid = document.getElementById('framesGrid');
+
+function log(line, isErr){
+  const div = document.createElement('div');
+  if (isErr) div.className = 'errbox';
+  div.textContent = line;
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function setProgress(i, total){ progressFill.style.width = `${(i / total) * 100}%`; }
+
+async function runPipeline(){
+  const { w, h } = dims();
+  const t0 = performance.now();
+  const secs = () => ((performance.now() - t0) / 1000).toFixed(1);
+
+  log(`[${secs()}s] resizing + uploading image 1…`);
+  const image1Source = await getImage1Source();
+  const img1Blob = await resizeFileToBlob(image1Source, w, h);
+  const image1_id = await uploadAsset(img1Blob, 'image1.jpg', 'image/jpeg');
+  log(`[${secs()}s]   image1 asset: ${image1_id}`);
+
+  log(`[${secs()}s] resizing + uploading image 2…`);
+  const img2Blob = await resizeFileToBlob(image2File, w, h);
+  const image2_id = await uploadAsset(img2Blob, 'image2.jpg', 'image/jpeg');
+  log(`[${secs()}s]   image2 asset: ${image2_id}`);
+
+  const frameBlobs = [];
+
+  for (let i = 1; i <= FRAME_COUNT; i++){
+    while (true){
+      try {
+        const strength = strengthForFrame(i);
+        log(`\n[${secs()}s] === frame ${i}/${FRAME_COUNT} (strength ${strength.toFixed(3)}) ===`);
+
+        log(`[${secs()}s]   uploading mask (${(maskBlobs[i - 1].size / 1024).toFixed(0)} KB)…`);
+        const mask_id = await uploadAsset(maskBlobs[i - 1], `mask${i}.jpg`, 'image/jpeg');
+
+        log(`[${secs()}s]   submitting job…`);
+        const job_id = await submitJob('telablur-v1',
+          { strength, direction: DIRECTION },
+          { image1: image1_id, image2: image2_id, mask: mask_id });
+        log(`[${secs()}s]   job ${job_id}, polling…`);
+
+        await pollJob(job_id, { timeout: 300000 });
+
+        log(`[${secs()}s]   fetching result…`);
+        const resultBody = await getResult(job_id);
+        const outFile = resultBody.outputs[0];
+
+        const dl = await fetch(proxied(outFile.url));
+        const blob = await dl.blob();
+        frameBlobs.push(blob);
+
+        const thumbUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = thumbUrl; a.download = `output_${String(i).padStart(2, '0')}.jpg`;
+        const img = document.createElement('img');
+        img.src = thumbUrl;
+        a.appendChild(img);
+        framesGrid.appendChild(a);
+
+        log(`[${secs()}s]   frame ${i} done`);
+        break;   // this frame succeeded, move on to the next one
+      } catch (err){
+        log(`[${secs()}s]   frame ${i} failed: ${err.message}`, true);
+        const tryAgain = confirm(`Frame ${i} failed:\n${err.message}\n\nRetry just this frame? (Cancel stops here, frames already made stay above.)`);
+        if (!tryAgain) throw err;
+        log(`[${secs()}s]   retrying frame ${i}…`);
+      }
+    }
+    setProgress(i, FRAME_COUNT);
+  }
+
+  log(`\n[${secs()}s] assembling gif…`);
+  const gifBlob = await assembleGif(frameBlobs, w, h);
+  log(`[${secs()}s] gif ready, total time ${secs()}s`);
+
+  const gifUrl = URL.createObjectURL(gifBlob);
+  document.getElementById('gifPreview').src = gifUrl;
+  document.getElementById('downloadGifBtn').href = gifUrl;
+  document.getElementById('countCard').style.display = mode === 'game' ? 'block' : 'none';
+  goToPhase('done');
+}
+
+function assembleGif(frameBlobs, w, h){
+  return new Promise(async (resolve, reject) => {
+    if (!window.GIF){ reject(new Error('gif.js did not load — check your connection and reload')); return; }
+    const gif = new GIF({
+      workers: 2, quality: 8, width: w, height: h,
+      workerScript: 'gif.worker.js'
+    });
+    for (const blob of frameBlobs){
+      const bitmap = await createImageBitmap(blob);
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+      gif.addFrame(c, { delay: 200 });
+    }
+    gif.on('finished', blob => resolve(blob));
+    gif.on('abort', () => reject(new Error('gif encoding aborted')));
+    gif.render();
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE 4 — DONE
+// ═══════════════════════════════════════════════════════════════════════════
+const CAT_ANSWERS = { landscape: 14, portrait: 16 };
+
+const revealChoiceRow = document.getElementById('revealChoiceRow');
+const revealConfirm = document.getElementById('revealConfirm');
+const revealResult = document.getElementById('revealResult');
+
+document.getElementById('revealAnswerBtn').addEventListener('click', () => {
+  revealChoiceRow.style.display = 'none';
+  revealConfirm.style.display = 'block';
+});
+document.getElementById('revealYesBtn').addEventListener('click', () => {
+  revealConfirm.style.display = 'none';
+  revealResult.style.display = 'block';
+  revealResult.textContent = `The answer: ${CAT_ANSWERS[orientation]} cats.`;
+});
+
+document.querySelectorAll('[data-reset]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    framesGrid.innerHTML = ''; logEl.innerHTML = ''; progressFill.style.width = '0%';
+    maskBlobs = [];
+    revealChoiceRow.style.display = 'flex';
+    revealConfirm.style.display = 'none';
+    revealResult.style.display = 'none';
+    goToPhase('setup');
+  });
+});
+
+setMode('game');
+goToPhase('setup');
+requestAnimationFrame(loop);
+initModel();
+</script>
+</body>
+</html>
