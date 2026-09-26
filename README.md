@@ -8,9 +8,12 @@ And maybe count some cats.
 
 Move in front of your camera; your silhouette becomes part of a quantum-blurred image blend, and ten quick captures turn into a gif.
 
+![Sample output](assets/sample.gif)
+
 ## Two modes
 
 - **Find the cats** — a hidden picture game. Move around to reveal it. How many cats you can spot?
+   ![One frame from find the cats mode](assets/cat-frame.jpg)
 - **Make your own** — upload two images of your own, dance, and create a gif.
 
 There's an [image library](https://bit.ly/telablurdancelibrary) you can pull from if you don't have any images handy.
