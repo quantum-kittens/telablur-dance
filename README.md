@@ -6,17 +6,29 @@ And maybe count some cats.
 
 **[telablur-dance.netlify.app](https://telablur-dance.netlify.app/)**
 
-Move in front of your camera; your silhouette becomes part of a quantum-blurred image blend, and ten quick captures turn into a gif.
+Move in front of your camera; your silhouette serves as a mask, and ten quick captures turn into a gif. 
 
 ![Sample output](assets/sample.gif)
 
+Example of a motion capture mask:
+
+![Example silhouette mask](assets/mask-frame.jpg)
+
 ## Two modes
 
-- **Find the cats** — a hidden picture game. Move around to reveal it. How many cats you can spot?
+- **Find the cats** — a hidden picture game. Move around to reveal more of the canvas. How many cats can you spot?
    ![One frame from find the cats mode](assets/cat-frame.jpg)
 - **Make your own** — upload two images of your own, dance, and create a gif.
 
 There's an [image library](https://bit.ly/telablurdancelibrary) you can pull from if you don't have any images handy.
+
+## About the images
+
+Two images are blended using Moth Quantum's [Telablur Engine](https://platform.mothquantum.com/engines/showcase/telablur).
+
+"Telablur places two images inside a single quantum state and morphs between them through rotation rather than blending. The result looks nothing like a crossfade — at half strength the effect reaches its peak, with both images blurring into each other at once, their shapes tangled by quantum interference across the whole register."
+
+You have two orientation options, landscape (16:9, 1280x720) or portrait (9:16, 720x1280).
 
 ## You'll need a Moth Quantum API key
 
